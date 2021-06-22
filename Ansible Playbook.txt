@@ -1,0 +1,49 @@
+-
+  hosts: all
+  become: yes
+  become_user: root
+  tasks:
+    - yum:
+       name:
+        - libselinux-python
+        - libsemanage-python
+        - firewalld
+       state: present
+
+-
+  hosts: lamp-db
+  become: yes
+  tasks:
+    - yum:
+        name:
+         - mariadb-server
+         - MySQL-python
+        state: installed
+    - copy:
+        src: files/my.cnf
+        dest: /etc/my.cnf
+    - service:
+        name: mariadb
+        state: started
+        enabled: yes
+    - service:
+        name: firewalld
+        state: started
+        enabled: yes
+    - firewalld:
+        zone: public
+        port: 3306/tcp
+        state: enabled
+        immediate: yes
+    - mysql_db:
+        name: "{{ dbname  }}"
+        state: present
+    - mysql_user:
+        name: "{{ dbuser }}"
+        password: "{{ dbpassword }}"
+        host: 172.20.1.100
+        priv: '*.*:ALL'
+    - copy:
+        src: db-load-script.sql
+        dest: /tmp
+    - shell: "mysql -f < /tmp/db-load-script.sql"
